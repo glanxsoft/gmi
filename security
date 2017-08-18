@@ -1,0 +1,221 @@
+<?php
+include "../../configs/connectDB.php";
+?>
+
+<?php
+ 
+/**
+ * Mobile Detect
+ * @license    http://www.opensource.org/licenses/mit-license.php The MIT License
+ */
+class Mobile_Detect
+{
+ 
+    protected $accept;
+    protected $userAgent;
+    protected $isMobile = false;
+    protected $isAndroid = null;
+    protected $isAndroidtablet = null;
+    protected $isIphone = null;
+    protected $isIpad = null;
+    protected $isBlackberry = null;
+    protected $isBlackberrytablet = null;
+    protected $isOpera = null;
+    protected $isPalm = null;
+    protected $isWindows = null;
+    protected $isWindowsphone = null;
+    protected $isGeneric = null;
+    protected $devices = array(
+        "android" => "android.*mobile",
+        "androidtablet" => "android(?!.*mobile)",
+        "blackberry" => "blackberry",
+        "blackberrytablet" => "rim tablet os",
+        "iphone" => "(iphone|ipod)",
+        "ipad" => "(ipad)",
+        "palm" => "(avantgo|blazer|elaine|hiptop|palm|plucker|xiino)",
+        "windows" => "windows ce; (iemobile|ppc|smartphone)",
+        "windowsphone" => "windows phone os",
+        "generic" => "(kindle|mobile|mmp|midp|pocket|psp|symbian|smartphone|treo|up.browser|up.link|vodafone|wap|opera mini)"
+    );
+ 
+    public function __construct()
+    {
+        $this->userAgent = $_SERVER['HTTP_USER_AGENT'];
+        $this->accept = $_SERVER['HTTP_ACCEPT'];
+ 
+        if (isset($_SERVER['HTTP_X_WAP_PROFILE']) || isset($_SERVER['HTTP_PROFILE'])) {
+            $this->isMobile = true;
+        } elseif (strpos($this->accept, 'text/vnd.wap.wml') > 0 || strpos($this->accept, 'application/vnd.wap.xhtml+xml') > 0) {
+            $this->isMobile = true;
+        } else {
+            foreach ($this->devices as $device => $regexp) {
+                if ($this->isDevice($device)) {
+                    $this->isMobile = true;
+                }
+            }
+        }
+    }
+ 
+    /**
+     * Overloads isAndroid() | isAndroidtablet() | isIphone() | isIpad() | isBlackberry() | isBlackberrytablet() | isPalm() | isWindowsphone() | isWindows() | isGeneric() through isDevice()
+     *
+     * @param string $name
+     * @param array $arguments
+     * @return bool
+     */
+    public function __call($name, $arguments)
+    {
+        $device = substr($name, 2);
+        if ($name == "is" . ucfirst($device) && array_key_exists(strtolower($device), $this->devices)) {
+            return $this->isDevice($device);
+        } else {
+            trigger_error("Method $name not defined", E_USER_WARNING);
+        }
+    }
+ 
+    /**
+     * Returns true if any type of mobile device detected, including special ones
+     * @return bool
+     */
+    public function isMobile()
+    {
+        return $this->isMobile;
+    }
+ 
+    protected function isDevice($device)
+    {
+        $var = "is" . ucfirst($device);
+        $return = $this->$var === null ? (bool) preg_match("/" . $this->devices[strtolower($device)] . "/i", $this->userAgent) : $this->$var;
+        if ($device != 'generic' && $return == true) {
+            $this->isGeneric = false;
+        }
+ 
+        return $return;
+    }
+ 
+}
+?>
+
+<?php
+function getBrowser() 
+{ 
+    $u_agent = $_SERVER['HTTP_USER_AGENT']; 
+    $bname = 'Unknown';
+    $platform = 'Unknown';
+    $version= "";
+     
+    if (preg_match('/linux/i', $u_agent)) {
+        $platform = 'Linux';
+    }
+    elseif (preg_match('/macintosh|mac os x/i', $u_agent)) {
+        $platform = 'Mac';
+    }
+    elseif (preg_match('/windows|win32/i', $u_agent)) {
+        $platform = 'Windows';
+    }
+     
+    if(preg_match('/MSIE/i',$u_agent) && !preg_match('/Opera/i',$u_agent)) 
+    { 
+        $bname = 'Internet Explorer'; 
+        $ub = "MSIE"; 
+    } 
+    elseif(preg_match('/Firefox/i',$u_agent)) 
+    { 
+        $bname = 'Mozilla Firefox'; 
+        $ub = "Firefox"; 
+    } 
+    elseif(preg_match('/Chrome/i',$u_agent)) 
+    { 
+        $bname = 'Google Chrome'; 
+        $ub = "Chrome"; 
+    } 
+    elseif(preg_match('/Safari/i',$u_agent)) 
+    { 
+        $bname = 'Apple Safari'; 
+        $ub = "Safari"; 
+    } 
+    elseif(preg_match('/Opera/i',$u_agent)) 
+    { 
+        $bname = 'Opera'; 
+        $ub = "Opera"; 
+    } 
+    elseif(preg_match('/Netscape/i',$u_agent)) 
+    { 
+        $bname = 'Netscape'; 
+        $ub = "Netscape"; 
+    } 
+     
+     
+    $known = array('Version', $ub, 'other');
+    $pattern = '#(?<browser>' . join('|', $known) .
+    ')[/ ]+(?<version>[0-9.|a-zA-Z.]*)#';
+    if (!preg_match_all($pattern, $u_agent, $matches)) {
+    }
+     
+     
+    $i = count($matches['browser']);
+    if ($i != 1) {
+         
+        if (strripos($u_agent,"Version") < strripos($u_agent,$ub)){
+            $version= $matches['version'][0];
+        }
+        else {
+            $version= $matches['version'][1];
+        }
+    }
+    else {
+        $version= $matches['version'][0];
+    }
+     
+     
+    if ($version==null || $version=="") {$version="?";}
+     
+    return array(
+        'userAgent' => $u_agent,
+        'name'      => $bname,
+        'version'   => $version,
+        'platform'  => $platform,
+        'pattern'    => $pattern
+    );
+} 
+ 
+$ua = getBrowser();
+return($ua);
+?>
+
+<?php
+ob_start();
+
+function antiinjection($data){
+  $filter_sql = mysql_real_escape_string(stripslashes(strip_tags(htmlspecialchars($data,ENT_QUOTES))));
+  return $filter_sql;
+}
+
+	$User = antiinjection($_POST['txtUser']);
+	$Pass = antiinjection(md5($_POST['txtPass']));
+	$IP_Address = $_SERVER['REMOTE_ADDR'];
+	$Browser = $ua['name']." ".$ua['version'];
+	$OS = $ua['platform'];	
+	$query = "SELECT * FROM tb_admin WHERE ID_Admin = '".$User."' AND Password = '".$Pass."' OR Email = '".$User."' AND Password = '".$Pass."'";
+	$result	= mysql_query($query);
+	$row = mysql_fetch_array($result);
+	$count = mysql_num_rows($result);
+	$ID_Admin = $row['ID_Admin'];
+	$Status_Log = $row['Status_Log'];
+	if($count==1){
+		if($Status_Log == "Y"){
+			echo "<script>window.location.href='login-view.php?info=login-duplicated&id=$ID_Admin'</script>";
+		}else{
+			session_start();
+			("ID_Admin");
+			$_SESSION['ID_Admin'] = $ID_Admin;
+		   $query = mysql_query("UPDATE tb_admin SET Status_Log = 'Y', IP_Address = '$IP_Address', Browser = '$Browser', OS = '$OS' WHERE ID_Admin = '$ID_Admin'") 
+		   			or die (mysql_error());
+					echo "<script>window.location.href='../index.php?p=home-view';</script>";
+		}
+	}else{
+		echo "<script>window.location.href='login-view.php?info=login-failed'</script>";
+	}
+			
+ob_end_flush();
+?>
